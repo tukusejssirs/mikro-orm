@@ -21,7 +21,7 @@ import { POSSIBLE_TYPE_IMPORTS } from './CoreImportsHelper';
 /**
  * @see https://github.com/tc39/proposal-regexp-unicode-property-escapes#other-examples
  */
-const identifierRegex = /^(?:[$_\p{ID_Start}])(?:[$\u200C\u200D\p{ID_Continue}])*$/u;
+export const identifierRegex = /^(?:[$_\p{ID_Start}])(?:[$\u200C\u200D\p{ID_Continue}])*$/u;
 
 export class SourceFile {
 
@@ -173,11 +173,13 @@ export class SourceFile {
 
   protected quote(val: string) {
     /* istanbul ignore next */
-    return val.startsWith(`'`) ? `\`${val}\`` : `'${val}'`;
+    return val.startsWith(`'`) ? `\`${val.replaceAll('`', '\\``')}\`` : `'${val.replaceAll(`'`, `\\'`)}'`;
   }
 
   protected getPropertyDefinition(prop: EntityProperty, padLeft: number): string {
     const padding = ' '.repeat(padLeft);
+
+    const propName = identifierRegex.test(prop.name) ? prop.name : this.quote(prop.name);
 
     let hiddenType = '';
     if (prop.hidden) {
@@ -187,8 +189,7 @@ export class SourceFile {
 
     if ([ReferenceKind.ONE_TO_MANY, ReferenceKind.MANY_TO_MANY].includes(prop.kind)) {
       this.coreImports.add('Collection');
-      this.entityImports.add(prop.type);
-      return `${padding}${prop.name}${hiddenType ? `: Collection<${prop.type}>${hiddenType}` : ''} = new Collection<${prop.type}>(this);\n`;
+      return `${padding}${propName}${hiddenType ? `: Collection<${prop.type}>${hiddenType}` : ''} = new Collection<${prop.type}>(this);\n`;
     }
 
     const propType = prop.mapToPk
@@ -201,16 +202,12 @@ export class SourceFile {
     const useDefault = prop.default != null;
     const optional = prop.nullable ? '?' : (useDefault ? '' : '!');
 
-    if (!prop.mapToPk && typeof prop.kind === 'string' && prop.kind !== ReferenceKind.SCALAR) {
-      this.entityImports.add(propType);
-    }
-
     if (prop.ref) {
       this.coreImports.add('Ref');
-      return `${padding}${prop.name}${optional}: Ref<${propType}>${hiddenType};\n`;
+      return `${padding}${propName}${optional}: Ref<${propType}>${hiddenType};\n`;
     }
 
-    let ret = `${prop.name}${optional}: ${propType}`;
+    let ret = `${propName}${optional}: ${propType}`;
 
     if (prop.kind === ReferenceKind.EMBEDDED && prop.array) {
       ret += '[]';

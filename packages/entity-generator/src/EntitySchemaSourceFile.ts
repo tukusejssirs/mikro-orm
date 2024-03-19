@@ -1,5 +1,5 @@
 import { ReferenceKind, Utils, type Dictionary, type EntityProperty, type TypeConfig } from '@mikro-orm/core';
-import { SourceFile } from './SourceFile';
+import { identifierRegex, SourceFile } from './SourceFile';
 
 export class EntitySchemaSourceFile extends SourceFile {
 
@@ -108,8 +108,7 @@ export class EntitySchemaSourceFile extends SourceFile {
       if (def.length > 80) {
         def = this.serializeObject(options, 2);
       }
-      //
-      ret += `    ${prop.name}: ${def},\n`;
+      ret += `    ${identifierRegex.test(prop.name) ? prop.name : this.quote(prop.name)}: ${def},\n`;
     });
     ret += `  },\n`;
     ret += `});\n`;
